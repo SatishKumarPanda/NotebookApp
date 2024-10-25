@@ -1,43 +1,37 @@
-@Library("Shared") _
-pipeline{
+
+pipeline {
+    agent any
     
-    agent { label "vinod"}
-    
-    stages{
+    stages {
+        stage("Code") {
+            steps {
+                echo "clone the code"
+                git url:"https://github.com/LondheShubham153/django-notes-app.git", branch: "main"
+            }
+        }
         
-        stage("Hello"){
-            steps{
-                script{
-                    hello()
-                }
+        stage("Build") {
+            steps {
+                echo "Building the image"
+                sh "docker build -t my-notes-app ."
             }
         }
-        stage("Code"){
-            steps{
-               script{
-                clone("https://github.com/LondheShubham153/django-notes-app.git","main")
-               }
-                
-            }
+       stage("Push to Docker Hub") {
+       steps {
+        echo "Building the code"
+        withCredentials([usernamePassword(credentialsId: "dockerHub", passwordVariable: "dockerHubPass", usernameVariable: "dockerHubUser")]) {
+            sh "docker tag my-notes-app ${dockerHubUser}/my-notes-app:latest"
+            sh "docker login -u ${dockerHubUser} -p ${env.dockerHubPass}"
+            sh "docker push ${dockerHubUser}/my-notes-app:latest"
         }
-        stage("Build"){
-            steps{
-                script{
-                docker_build("notes-app","latest","trainwithshubham")
-                }
-            }
-        }
-        stage("Push to DockerHub"){
-            steps{
-                script{
-                    docker_push("notes-app","latest","trainwithshubham")
-                }
-            }
-        }
-        stage("Deploy"){
-            steps{
-                echo "This is deploying the code"
-                sh "docker compose down && docker compose up -d"
+    }
+}
+
+        
+        stage("Deploy") {
+            steps {
+                echo "Deploying the code"
+                sh "docker-compose down && docker-compose up -d"
             }
         }
     }
